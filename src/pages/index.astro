@@ -1,0 +1,833 @@
+---
+import { existsSync } from 'fs';
+import { join } from 'path';
+
+async function fetchOgImage(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    const html = await res.text();
+    const match =
+      html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i) ||
+      html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+function localImage(filename: string): string | null {
+  const abs = join(process.cwd(), 'public', 'images', 'works', filename);
+  return existsSync(abs) ? `/images/works/${filename}` : null;
+}
+
+const [ogFoodExam, ogFaceScore, ogBlog, ogZenn] = await Promise.all([
+  fetchOgImage('https://www.food-exam.com/'),
+  fetchOgImage('https://line.me/R/ti/p/@207hhrmi'),
+  fetchOgImage('https://freeheroblog.com/'),
+  fetchOgImage('https://zenn.dev/kunihero'),
+]);
+
+const thumbFoodExam = ogFoodExam || localImage('foodexam.png');
+const thumbFaceScore = ogFaceScore || localImage('face-score.png');
+const thumbBlog = localImage('blog.png'); // OGPは外れているためスキップ
+const thumbZenn = ogZenn || localImage('zenn.png');
+
+function profileImagePath(): string | null {
+  for (const ext of ['jpg', 'jpeg', 'png', 'webp']) {
+    const abs = join(process.cwd(), 'public', 'images', `profile.${ext}`);
+    if (existsSync(abs)) return `/images/profile.${ext}`;
+  }
+  return null;
+}
+const profileImage = profileImagePath();
+---
+<!DOCTYPE html>
+<html lang="ja" data-lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kuni — Full-Stack Engineer & PM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --color-bg: #FAFAF8;
+  --color-bg-alt: #F0EFEB;
+  --color-bg-card: #FFFFFF;
+  --color-text: #1A1A1A;
+  --color-text-muted: #6B6B6B;
+  --color-text-light: #9A9A9A;
+  --color-accent: #2D5A3D;
+  --color-accent-light: #3D7A52;
+  --color-accent-bg: #E8F0EB;
+  --color-border: #E0DDD8;
+  --color-border-light: #ECEAE5;
+  --color-hero-bg: #1A1F1C;
+  --color-hero-text: #F5F5F0;
+  --color-hero-muted: #A0A89A;
+  --color-tag-bg: #F0EFEB;
+  --color-tag-text: #4A4A4A;
+  --font-sans: 'DM Sans', 'Noto Sans JP', sans-serif;
+  --font-jp: 'Noto Sans JP', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --space-xs: 0.5rem; --space-sm: 1rem; --space-md: 1.5rem;
+  --space-lg: 3rem; --space-xl: 5rem; --space-2xl: 8rem;
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 20px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); background: var(--color-bg); color: var(--color-text); line-height: 1.7; overflow-x: hidden; }
+img { max-width: 100%; display: block; } a { color: inherit; text-decoration: none; } button { cursor: pointer; border: none; background: none; font: inherit; }
+::selection { background: var(--color-accent); color: white; }
+
+/* NAV */
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; transition: var(--transition); background: transparent; }
+.nav.scrolled { background: rgba(250,250,248,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-light); }
+.nav-logo { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500; letter-spacing: 0.05em; color: var(--color-hero-text); transition: var(--transition); }
+.nav.scrolled .nav-logo { color: var(--color-text); }
+.nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+.nav-links a { font-size: 0.82rem; font-weight: 500; letter-spacing: 0.03em; color: var(--color-hero-muted); transition: var(--transition); position: relative; }
+.nav.scrolled .nav-links a { color: var(--color-text-muted); }
+.nav-links a:hover { color: var(--color-accent-light); }
+.nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1.5px; background: var(--color-accent); transition: var(--transition); }
+.nav-links a:hover::after { width: 100%; }
+.lang-toggle { font-family: var(--font-mono); font-size: 0.75rem; padding: 0.35rem 0.75rem; border: 1px solid rgba(255,255,255,0.25); border-radius: 100px; color: var(--color-hero-muted); transition: var(--transition); letter-spacing: 0.05em; }
+.nav.scrolled .lang-toggle { border-color: var(--color-border); color: var(--color-text-muted); }
+.lang-toggle:hover { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+.nav-hamburger { display: none; flex-direction: column; gap: 5px; padding: 4px; }
+.nav-hamburger span { width: 22px; height: 1.5px; background: var(--color-hero-text); transition: var(--transition); }
+.nav.scrolled .nav-hamburger span { background: var(--color-text); }
+@media (max-width: 768px) {
+  .nav-hamburger { display: flex; }
+  .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--color-bg); flex-direction: column; padding: 2rem; gap: 1.5rem; border-bottom: 1px solid var(--color-border); }
+  .nav-links.open { display: flex; }
+  .nav-links a, .nav.scrolled .nav-links a { color: var(--color-text); }
+  .lang-toggle { border-color: var(--color-border); color: var(--color-text-muted); }
+}
+
+/* HERO */
+.hero { min-height: 100vh; background: var(--color-hero-bg); display: flex; align-items: center; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; top: -30%; right: -10%; width: 60%; height: 80%; background: radial-gradient(ellipse, rgba(45,90,61,0.15) 0%, transparent 70%); pointer-events: none; }
+.hero-inner { max-width: 1100px; margin: 0 auto; padding: 8rem 2rem 4rem; width: 100%; }
+.hero-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-accent-light); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1.5rem; opacity: 0; animation: fadeUp 0.8s 0.2s forwards; }
+.hero-name { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; color: var(--color-hero-text); line-height: 1.15; margin-bottom: 1.5rem; opacity: 0; animation: fadeUp 0.8s 0.4s forwards; }
+.hero-title { font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: 400; color: var(--color-hero-muted); margin-bottom: 1.5rem; opacity: 0; animation: fadeUp 0.8s 0.5s forwards; }
+.hero-description { max-width: 540px; font-size: 0.95rem; color: rgba(245,245,240,0.55); line-height: 1.85; margin-bottom: 3rem; opacity: 0; animation: fadeUp 0.8s 0.6s forwards; }
+.hero-links { display: flex; gap: 1rem; flex-wrap: wrap; opacity: 0; animation: fadeUp 0.8s 0.7s forwards; }
+.hero-link { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 500; color: var(--color-hero-muted); padding: 0.6rem 1.2rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; transition: var(--transition); }
+.hero-link:hover { border-color: var(--color-accent-light); color: var(--color-accent-light); background: rgba(45,90,61,0.1); }
+.hero-link svg { width: 16px; height: 16px; }
+.hero-scroll { position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0; animation: fadeUp 0.8s 1s forwards; }
+.hero-scroll span { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.15em; color: var(--color-hero-muted); writing-mode: vertical-lr; }
+.hero-scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--color-hero-muted), transparent); animation: scrollPulse 2s ease-in-out infinite; }
+@keyframes scrollPulse { 0%,100% { opacity: 1; transform: scaleY(1); } 50% { opacity: 0.3; transform: scaleY(0.6); } }
+
+/* SECTIONS */
+.section { padding: var(--space-2xl) 2rem; max-width: 1100px; margin: 0 auto; }
+.section-header { margin-bottom: var(--space-xl); }
+.section-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 0.75rem; }
+.section-title { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.2; }
+.section-divider { width: 40px; height: 2px; background: var(--color-accent); margin-top: 1.25rem; }
+
+/* ABOUT */
+.about-grid { display: grid; grid-template-columns: 280px 1fr; gap: var(--space-xl); align-items: start; }
+.about-photo { aspect-ratio: 3/4; border-radius: var(--radius-md); background: var(--color-bg-alt); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--color-border-light); }
+.about-photo-placeholder { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-text-light); }
+.about-content p { font-size: 0.95rem; color: var(--color-text-muted); margin-bottom: 1.25rem; line-height: 1.9; }
+.about-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; padding-top: 2rem; border-top: 1px solid var(--color-border-light); }
+.about-meta-item label { display: block; font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-light); margin-bottom: 0.3rem; }
+.about-meta-item span { font-size: 0.9rem; font-weight: 500; }
+@media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; gap: 2rem; } .about-photo { max-width: 220px; } }
+
+/* TIMELINE */
+.timeline { position: relative; padding-left: 2rem; }
+.timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--color-border); }
+.timeline-item { position: relative; padding-bottom: 3rem; padding-left: 2rem; }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot { position: absolute; left: -2.45rem; top: 0.4rem; width: 10px; height: 10px; border-radius: 50%; background: var(--color-bg); border: 2px solid var(--color-accent); }
+.timeline-item.highlight .timeline-dot { background: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-bg); }
+.timeline-year { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-accent); letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+.timeline-role { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.25rem; }
+.timeline-company { font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.5rem; }
+.timeline-desc { font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.75; }
+.timeline-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+.timeline-tag { font-family: var(--font-mono); font-size: 0.68rem; padding: 0.2rem 0.6rem; background: var(--color-tag-bg); color: var(--color-tag-text); border-radius: 100px; }
+
+/* SKILLS */
+.skills-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+.skill-card { background: var(--color-bg-card); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 2rem; transition: var(--transition); }
+.skill-card:hover { border-color: var(--color-accent); box-shadow: 0 4px 24px rgba(45,90,61,0.06); transform: translateY(-2px); }
+.skill-card-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--color-accent-bg); display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; font-size: 1.1rem; }
+.skill-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+.skill-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.skill-item { font-family: var(--font-mono); font-size: 0.72rem; padding: 0.3rem 0.7rem; background: var(--color-tag-bg); color: var(--color-tag-text); border-radius: 100px; transition: var(--transition); }
+.skill-item:hover { background: var(--color-accent); color: white; }
+
+/* WORKS */
+.works-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
+.work-card { background: var(--color-bg-card); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); overflow: hidden; transition: var(--transition); }
+.work-card:hover { border-color: var(--color-border); box-shadow: 0 8px 32px rgba(0,0,0,0.06); transform: translateY(-3px); }
+.work-card-thumb { aspect-ratio: 16/9; background: var(--color-bg-alt); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--color-border-light); overflow: hidden; }
+.work-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.work-card-thumb-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; background: linear-gradient(135deg, var(--color-bg-alt) 0%, var(--color-accent-bg) 100%); }
+.work-card-thumb-placeholder .thumb-initial { font-family: var(--font-mono); font-size: 2.5rem; font-weight: 700; color: var(--color-accent); line-height: 1; }
+.work-card-thumb-placeholder .thumb-name { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-light); }
+.work-card-thumb-label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-light); }
+.work-card-body { padding: 1.5rem; }
+.work-card-type { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 0.5rem; }
+.work-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+.work-card p { font-size: 0.85rem; color: var(--color-text-muted); line-height: 1.7; margin-bottom: 1rem; }
+.work-card-links { display: flex; gap: 0.75rem; }
+.work-card-link { font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-accent); display: inline-flex; align-items: center; gap: 0.3rem; transition: var(--transition); }
+.work-card-link:hover { color: var(--color-accent-light); }
+.work-card-link svg { width: 14px; height: 14px; }
+
+/* CERTS */
+.certs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+.cert-group h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+.cert-list { list-style: none; }
+.cert-list li { font-size: 0.82rem; color: var(--color-text-muted); padding: 0.4rem 0; border-bottom: 1px solid var(--color-border-light); display: flex; justify-content: space-between; align-items: center; }
+.cert-list li:last-child { border-bottom: none; }
+.cert-year { font-family: var(--font-mono); font-size: 0.7rem; color: var(--color-text-light); flex-shrink: 0; margin-left: 0.5rem; }
+
+/* HOBBIES */
+.hobbies-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
+.hobby-card { padding: 2rem; background: var(--color-bg-card); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); }
+.hobby-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+.hobby-card p { font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.8; }
+.country-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
+.country-tag { font-size: 0.72rem; padding: 0.2rem 0.55rem; background: var(--color-tag-bg); color: var(--color-tag-text); border-radius: 100px; }
+.race-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
+.race-tag { font-size: 0.72rem; padding: 0.2rem 0.55rem; background: var(--color-accent-bg); color: var(--color-accent); border-radius: 100px; }
+
+/* VALUES & QUOTES */
+.values-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+.value-card { padding: 2rem; background: var(--color-bg-card); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); }
+.value-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--color-accent); }
+.value-card p { font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.8; }
+.quote-item { padding: 2rem; border-left: 3px solid var(--color-accent); margin-bottom: 1.5rem; background: var(--color-bg-card); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.quote-text { font-size: 0.95rem; font-style: italic; line-height: 1.85; margin-bottom: 0.75rem; color: var(--color-text); }
+.quote-source { font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-text-light); }
+.quote-comment { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.5rem; line-height: 1.7; }
+
+/* CONTACT */
+.contact-section { background: var(--color-hero-bg); color: var(--color-hero-text); padding: var(--space-2xl) 2rem; }
+.contact-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl); align-items: start; }
+.contact-info .section-label { color: var(--color-accent-light); }
+.contact-info .section-title { color: var(--color-hero-text); }
+.contact-info .section-divider { background: var(--color-accent-light); }
+.contact-text { font-size: 0.95rem; color: var(--color-hero-muted); line-height: 1.8; margin-top: 1.5rem; }
+.contact-links-list { list-style: none; margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.contact-links-list a { font-size: 0.88rem; color: var(--color-hero-muted); display: inline-flex; align-items: center; gap: 0.6rem; transition: var(--transition); }
+.contact-links-list a:hover { color: var(--color-accent-light); }
+.contact-links-list svg { width: 18px; height: 18px; opacity: 0.6; }
+.contact-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.form-group label { display: block; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-hero-muted); margin-bottom: 0.5rem; }
+.form-group input, .form-group textarea { width: 100%; padding: 0.85rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: var(--color-hero-text); font-family: var(--font-sans); font-size: 0.9rem; transition: var(--transition); outline: none; }
+.form-group input:focus, .form-group textarea:focus { border-color: var(--color-accent-light); background: rgba(255,255,255,0.08); }
+.form-group textarea { min-height: 140px; resize: vertical; }
+.form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,0.2); }
+.form-submit { align-self: flex-start; padding: 0.85rem 2.5rem; background: var(--color-accent); color: white; border-radius: 100px; font-size: 0.85rem; font-weight: 500; transition: var(--transition); }
+.form-submit:hover { background: var(--color-accent-light); transform: translateY(-1px); }
+@media (max-width: 768px) { .contact-inner { grid-template-columns: 1fr; } }
+
+.footer { background: var(--color-hero-bg); border-top: 1px solid rgba(255,255,255,0.05); padding: 2rem; text-align: center; }
+.footer p { font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.25); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+.section-full { background: var(--color-bg-alt); padding: var(--space-2xl) 2rem; }
+.section-full-inner { max-width: 1100px; margin: 0 auto; }
+[data-lang="ja"] .en-only { display: none; }
+[data-lang="en"] .ja-only { display: none; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-logo">kuni</div>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#about"><span class="ja-only">自己紹介</span><span class="en-only">About</span></a></li>
+    <li><a href="#life"><span class="ja-only">人生</span><span class="en-only">Life</span></a></li>
+    <li><a href="#skills"><span class="ja-only">スキル</span><span class="en-only">Skills</span></a></li>
+    <li><a href="#works"><span class="ja-only">制作物</span><span class="en-only">Works</span></a></li>
+    <li><a href="#hobbies"><span class="ja-only">趣味</span><span class="en-only">Hobbies</span></a></li>
+    <li><a href="#values"><span class="ja-only">大事にしていること</span><span class="en-only">Values</span></a></li>
+    <li><a href="#contact"><span class="ja-only">お問い合わせ</span><span class="en-only">Contact</span></a></li>
+    <li><button class="lang-toggle" onclick="toggleLang()">EN / JA</button></li>
+  </ul>
+  <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-inner">
+    <div class="hero-label">Portfolio</div>
+    <h1 class="hero-name">kuni</h1>
+    <p class="hero-title">Full-Stack Engineer & Product Manager</p>
+    <p class="hero-description">
+      <span class="ja-only">はじめまして、kuniです。山口県出身、京都在住。食品業界からエンジニアに転身し、今はPMもやっています。このサイトでは、自分のこれまでの歩みや作ったもの、好きなことをまとめています。よかったらゆっくり見ていってください。</span>
+      <span class="en-only">Hi, I'm kuni. Born in Yamaguchi, based in Kyoto. I made a career shift from the food industry to engineering, and now I also work as a PM. This site is a little collection of my journey, things I've built, and stuff I enjoy. Feel free to look around.</span>
+    </p>
+    <div class="hero-links">
+      <a href="https://github.com/kunihiro38" class="hero-link" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <a href="https://freeheroblog.com/" class="hero-link" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+        Blog
+      </a>
+      <a href="https://zenn.dev/kunihero" class="hero-link" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M.264 23.771h4.984c.264 0 .498-.147.645-.352L19.614.874c.176-.293-.029-.645-.381-.645h-4.72c-.205 0-.381.117-.528.322L.03 23.361c-.088.176.029.41.234.41zM17.445 23.419l6.479-10.408c.176-.293-.029-.645-.381-.645h-4.72c-.176 0-.352.088-.44.234l-6.655 10.408c-.176.293.029.645.381.645h4.896c.176 0 .352-.088.44-.234z"/></svg>
+        Zenn
+      </a>
+    </div>
+  </div>
+  <div class="hero-scroll"><span>scroll</span><div class="hero-scroll-line"></div></div>
+</section>
+
+<!-- ABOUT -->
+<section class="section" id="about">
+  <div class="section-header fade-in">
+    <div class="section-label">01 — <span class="ja-only">自己紹介</span><span class="en-only">About</span></div>
+    <h2 class="section-title"><span class="ja-only">kuniについて</span><span class="en-only">About kuni</span></h2>
+    <div class="section-divider"></div>
+  </div>
+  <div class="about-grid fade-in">
+    <div class="about-photo">
+      {profileImage
+        ? <img src={profileImage} alt="kuni" style="width:100%;height:100%;object-fit:cover;" />
+        : <span class="about-photo-placeholder">PHOTO</span>
+      }
+    </div>
+    <div class="about-content">
+      <p>
+        <span class="ja-only">1988年山口県生まれ。18年間を山口で過ごした後、東京の大学でマーケティングを学びました。在学中に演劇サークルの劇団に所属して表現の世界にも触れ、1年間休学してオーストラリア・シドニーへ留学しました。</span>
+        <span class="en-only">Born in 1988 in Yamaguchi Prefecture. After spending 18 years there, I studied marketing at a university in Tokyo. During college, I joined a theater group and explored the world of expression, then took a year off to study abroad in Sydney, Australia.</span>
+      </p>
+      <p>
+        <span class="ja-only">大学卒業後は大手食品卸売企業でブランドマネージャーとして商品企画に携わり、PBブランドを年間売上2億円超に成長させました。ベトナム駐在も経験。その後エンジニアに転身し、SaaS企業でPython/Djangoを中心に3年間フルスタック開発を経験、受託開発企業でPHP・Java・Kotlinの開発や設計にも従事しました。</span>
+        <span class="en-only">After graduating, I worked as a Brand Manager at a major food wholesaler, growing a PB brand to over ¥200M in annual sales, with an overseas assignment in Vietnam. Then I shifted to engineering — 3 years of full-stack development (Python/Django) at a SaaS company, followed by PHP, Java, and Kotlin work at a contract development firm.</span>
+      </p>
+      <p>
+        <span class="ja-only">現在はIoT連携プロダクトのPMとして、要件定義・クライアント折衝・プロダクト改善を幅広く担当しています。個人では月間最高3万PVのテックブログや、有料会員500名超のeラーニングサービスを運営中。</span>
+        <span class="en-only">Currently working as a PM for an IoT-integrated product, handling requirements definition, client communication, and product improvement. On the side, I run a tech blog (peak 30K PV/month) and an e-learning service with 500+ paid subscribers.</span>
+      </p>
+      <div class="about-meta">
+        <div class="about-meta-item">
+          <label><span class="ja-only">拠点</span><span class="en-only">Location</span></label>
+          <span>Kyoto, Japan</span>
+        </div>
+        <div class="about-meta-item">
+          <label><span class="ja-only">語学</span><span class="en-only">Languages</span></label>
+          <span><span class="ja-only">日本語 / 英語</span><span class="en-only">Japanese / English</span></span>
+        </div>
+        <div class="about-meta-item">
+          <label><span class="ja-only">得意領域</span><span class="en-only">Specialty</span></label>
+          <span>AWS / Django / SEO</span>
+        </div>
+        <div class="about-meta-item">
+          <label><span class="ja-only">ブログ</span><span class="en-only">Blog</span></label>
+          <span><span class="ja-only">月間最高3万PV / 記事200+</span><span class="en-only">Peak 30K PV/mo / 200+ posts</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIFE TIMELINE -->
+<div class="section-full" id="life">
+  <div class="section-full-inner">
+    <div class="section-header fade-in">
+      <div class="section-label">02 — <span class="ja-only">人生</span><span class="en-only">Life Journey</span></div>
+      <h2 class="section-title"><span class="ja-only">これまでの歩み</span><span class="en-only">My Journey</span></h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="timeline fade-in">
+
+      <div class="timeline-item highlight">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2024 — Present</div>
+        <div class="timeline-role"><span class="ja-only">プロダクトマネージャー</span><span class="en-only">Product Manager</span></div>
+        <div class="timeline-company"><span class="ja-only">IoTスタートアップ</span><span class="en-only">IoT Startup</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">IoT連携レシピアプリのPMとして、要件定義・クライアント折衝・プロダクト改善を担当。検索・レコメンド機能の改善やデータ活用戦略の立案にも従事。</span>
+          <span class="en-only">PM for an IoT-integrated recipe app. Handling requirements definition, client communication, and product improvement. Also working on search/recommendation features and data strategy.</span>
+        </div>
+        <div class="timeline-tags">
+          <span class="timeline-tag">AWS</span><span class="timeline-tag">Product Management</span><span class="timeline-tag">OpenSearch</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2023 — 2024</div>
+        <div class="timeline-role"><span class="ja-only">フルスタックエンジニア</span><span class="en-only">Full-Stack Engineer</span></div>
+        <div class="timeline-company"><span class="ja-only">受託開発企業</span><span class="en-only">Contract Development Firm</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">スキー・スノーボード検索サイトの開発（PHP/Phalcon、AWS Lambda）、求人サイトのJava→KotlinリプレイスでのAPI詳細設計、新卒・中途のエンジニア採用面接官も担当。</span>
+          <span class="en-only">Developed a ski/snowboard search site (PHP/Phalcon, AWS Lambda), designed APIs for a Java→Kotlin migration (140-person team), and served as interviewer for hiring.</span>
+        </div>
+        <div class="timeline-tags">
+          <span class="timeline-tag">PHP</span><span class="timeline-tag">Java</span><span class="timeline-tag">Kotlin</span><span class="timeline-tag">AWS SAM</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2020 — 2023</div>
+        <div class="timeline-role"><span class="ja-only">フルスタックエンジニア</span><span class="en-only">Full-Stack Engineer</span></div>
+        <div class="timeline-company"><span class="ja-only">SaaS開発企業（自社開発）</span><span class="en-only">SaaS Company (In-house Dev)</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">コンテンツマーケティングプラットフォームの開発・運営。Python/Djangoを中心に、フロントからインフラまで幅広く担当。脆弱性対応、UIUX改善、ABテストなど。</span>
+          <span class="en-only">Developed and maintained a content marketing platform. Worked across the stack with Python/Django at its core — handling security patches, UI/UX improvements, and A/B testing.</span>
+        </div>
+        <div class="timeline-tags">
+          <span class="timeline-tag">Python</span><span class="timeline-tag">Django</span><span class="timeline-tag">AWS</span><span class="timeline-tag">Docker</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2019 — 2020</div>
+        <div class="timeline-role"><span class="ja-only">自由な1年間</span><span class="en-only">A Year of Freedom</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">前職を円満退職し、思い切って1年間の充電期間を設けました。心身ともに健康そのもので、純粋にやりたいことに時間を使いたかったのが理由です。ヨーロッパやアジア各地を旅しながら、以前から興味のあったプログラミングを趣味として始めました。これがエンジニアへの転身のきっかけになりました。</span>
+          <span class="en-only">Left my previous job on good terms and took a deliberate year-long break — not out of necessity, but simply because I wanted time to pursue what I was curious about. Traveled across Europe and Asia, and started programming as a hobby. That's what sparked my transition into engineering.</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2018</div>
+        <div class="timeline-role"><span class="ja-only">ベトナム駐在</span><span class="en-only">Vietnam Assignment</span></div>
+        <div class="timeline-company"><span class="ja-only">ホーチミン（半年間）</span><span class="en-only">Ho Chi Minh City (6 months)</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">食品卸売企業の海外事業として、ベトナムに半年間駐在。東南アジアのビジネス環境を肌で体験。</span>
+          <span class="en-only">Stationed in Vietnam for 6 months as part of the food wholesaler's overseas operations.</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2014 — 2019</div>
+        <div class="timeline-role"><span class="ja-only">ブランドマネージャー</span><span class="en-only">Brand Manager</span></div>
+        <div class="timeline-company"><span class="ja-only">大手食品卸売企業（東京本社）</span><span class="en-only">Major Food Wholesaler (Tokyo HQ)</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">即席麺・即席みそ汁・水産缶詰のPBブランドを担当。商品企画・開発・販促・原料調達を一手に担い、年間売上2億円超のシリーズに成長させる。</span>
+          <span class="en-only">Managed PB brands for instant noodles, miso soup, and canned seafood. Grew the brand to ¥200M+ in annual sales.</span>
+        </div>
+        <div class="timeline-tags">
+          <span class="timeline-tag">Marketing</span><span class="timeline-tag">Product Development</span><span class="timeline-tag">Brand Management</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2011 — 2014</div>
+        <div class="timeline-role"><span class="ja-only">経理・物流・営業</span><span class="en-only">Accounting, Logistics, Sales</span></div>
+        <div class="timeline-company"><span class="ja-only">大手食品卸売企業（大阪支社）</span><span class="en-only">Major Food Wholesaler (Osaka Branch)</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">新卒入社。大阪で3年間、経理・物流・営業の基礎を幅広く経験。</span>
+          <span class="en-only">Joined as new graduate. Spent 3 years in Osaka across accounting, logistics, and sales.</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2006 — 2011</div>
+        <div class="timeline-role"><span class="ja-only">東京の大学 / マーケティング専攻</span><span class="en-only">University in Tokyo / Marketing</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">マーケティングを専攻。演劇サークルの劇団に所属し、舞台での表現を学ぶ。在学中に1年間休学してオーストラリア・シドニーへ留学。</span>
+          <span class="en-only">Studied marketing. Joined a theater group and explored the art of expression on stage. Took a year off to study abroad in Sydney, Australia.</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">1988 — 2006</div>
+        <div class="timeline-role"><span class="ja-only">山口県で育つ</span><span class="en-only">Growing Up in Yamaguchi</span></div>
+        <div class="timeline-desc">
+          <span class="ja-only">山口県で生まれ、18年間を過ごす。中学校時代は陸上部の長距離に打ち込み、走ることで忍耐力を身につけた。</span>
+          <span class="en-only">Born and raised in Yamaguchi Prefecture for 18 years. Dedicated to long-distance running on the track team in junior high, building endurance and grit.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SKILLS -->
+<section class="section" id="skills">
+  <div class="section-header fade-in">
+    <div class="section-label">03 — <span class="ja-only">スキル</span><span class="en-only">Skills</span></div>
+    <h2 class="section-title"><span class="ja-only">技術スタック</span><span class="en-only">Technical Skills</span></h2>
+    <div class="section-divider"></div>
+  </div>
+  <div class="skills-grid fade-in">
+    <div class="skill-card">
+      <div class="skill-card-icon">⚡</div>
+      <h3><span class="ja-only">バックエンド</span><span class="en-only">Backend</span></h3>
+      <div class="skill-list">
+        <span class="skill-item">Python</span><span class="skill-item">Django</span><span class="skill-item">PHP</span><span class="skill-item">Phalcon</span><span class="skill-item">Java</span><span class="skill-item">Spring Boot</span><span class="skill-item">Kotlin</span><span class="skill-item">Node.js</span><span class="skill-item">SQL</span><span class="skill-item">MySQL</span>
+      </div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-card-icon">🎨</div>
+      <h3><span class="ja-only">フロントエンド</span><span class="en-only">Frontend</span></h3>
+      <div class="skill-list">
+        <span class="skill-item">JavaScript</span><span class="skill-item">TypeScript</span><span class="skill-item">HTML5</span><span class="skill-item">CSS3</span><span class="skill-item">jQuery</span>
+      </div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-card-icon">☁️</div>
+      <h3><span class="ja-only">インフラ・クラウド</span><span class="en-only">Infrastructure & Cloud</span></h3>
+      <div class="skill-list">
+        <span class="skill-item">AWS EC2</span><span class="skill-item">S3</span><span class="skill-item">Lambda</span><span class="skill-item">CloudFront</span><span class="skill-item">CloudWatch</span><span class="skill-item">EventBridge</span><span class="skill-item">SNS</span><span class="skill-item">ACM</span><span class="skill-item">SAM</span><span class="skill-item">OpenSearch</span><span class="skill-item">Docker</span><span class="skill-item">Nginx</span>
+      </div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-card-icon">🔧</div>
+      <h3><span class="ja-only">ツール・その他</span><span class="en-only">Tools & Others</span></h3>
+      <div class="skill-list">
+        <span class="skill-item">Git / GitHub</span><span class="skill-item">Backlog</span><span class="skill-item">SEO</span><span class="skill-item">CI/CD</span>
+      </div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-card-icon">📋</div>
+      <h3><span class="ja-only">マネジメント</span><span class="en-only">Management</span></h3>
+      <div class="skill-list">
+        <span class="skill-item">Product Management</span><span class="skill-item">Requirements Definition</span><span class="skill-item">Client Communication</span><span class="skill-item">Hiring / Interviews</span><span class="skill-item">Brand Management</span>
+      </div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-card-icon">🌏</div>
+      <h3><span class="ja-only">語学</span><span class="en-only">Language</span></h3>
+      <div class="skill-list">
+        <span class="skill-item"><span class="ja-only">日本語（ネイティブ）</span><span class="en-only">Japanese (Native)</span></span>
+        <span class="skill-item"><span class="ja-only">英語（TOEIC 725）</span><span class="en-only">English (TOEIC 725)</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WORKS -->
+<div class="section-full" id="works">
+  <div class="section-full-inner">
+    <div class="section-header fade-in">
+      <div class="section-label">04 — <span class="ja-only">制作物</span><span class="en-only">Works</span></div>
+      <h2 class="section-title"><span class="ja-only">ポートフォリオ</span><span class="en-only">Portfolio</span></h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="works-grid fade-in">
+
+      <div class="work-card">
+        <div class="work-card-thumb">
+          {thumbFoodExam ? <img src={thumbFoodExam} alt="フードイグザム" loading="lazy" /> : <div class="work-card-thumb-placeholder"><span class="thumb-initial">F</span><span class="thumb-name">Food Exam</span></div>}
+        </div>
+        <div class="work-card-body">
+          <div class="work-card-type"><span class="ja-only">個人開発</span><span class="en-only">Personal Project</span></div>
+          <h3><span class="ja-only">フードイグザム</span><span class="en-only">Food Exam</span></h3>
+          <p>
+            <span class="ja-only">食品業界の資格取得を支援するeラーニングWebアプリ。企画から運用まで全て1人で開発。有料会員500名を突破しました。</span>
+            <span class="en-only">An e-learning web app for food industry certifications. Fully developed solo from planning to operation. 500+ paid subscribers.</span>
+          </p>
+          <div class="work-card-links">
+            <a href="https://www.food-exam.com/" class="work-card-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Live
+            </a>
+            <a href="https://github.com/kunihiro38/sample_foodexam" class="work-card-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg> Code
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-card">
+        <div class="work-card-thumb">
+          {thumbFaceScore ? <img src={thumbFaceScore} alt="AI顔面偏差値" loading="lazy" /> : <div class="work-card-thumb-placeholder"><span class="thumb-initial">AI</span><span class="thumb-name">Face Score</span></div>}
+        </div>
+        <div class="work-card-body">
+          <div class="work-card-type"><span class="ja-only">個人開発</span><span class="en-only">Personal Project</span></div>
+          <h3><span class="ja-only">AI顔面偏差値測定</span><span class="en-only">AI Face Score</span></h3>
+          <p>
+            <span class="ja-only">LINEで写真を送るだけでAIが顔面偏差値を測定してくれるBot。友達登録して気軽に遊べます。</span>
+            <span class="en-only">A LINE Bot that measures your face score with AI. Just send a photo and get your result instantly.</span>
+          </p>
+          <div class="work-card-links">
+            <a href="https://line.me/R/ti/p/@207hhrmi" class="work-card-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> LINE
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-card">
+        <div class="work-card-thumb">
+          {thumbBlog ? <img src={thumbBlog} alt="Free Hero Blog" loading="lazy" /> : <div class="work-card-thumb-placeholder"><span class="thumb-initial">FH</span><span class="thumb-name">Free Hero Blog</span></div>}
+        </div>
+        <div class="work-card-body">
+          <div class="work-card-type"><span class="ja-only">個人ブログ</span><span class="en-only">Personal Blog</span></div>
+          <h3>Free Hero Blog</h3>
+          <p>
+            <span class="ja-only">プログラミング・技術を中心としたテックブログ。記事数200本超、月間最高3万PV。</span>
+            <span class="en-only">A tech blog with 200+ articles. Peak monthly page views: 30K.</span>
+          </p>
+          <div class="work-card-links">
+            <a href="https://freeheroblog.com/" class="work-card-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Visit
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-card">
+        <div class="work-card-thumb">
+          {thumbZenn ? <img src={thumbZenn} alt="Zenn" loading="lazy" /> : <div class="work-card-thumb-placeholder"><span class="thumb-initial">Z</span><span class="thumb-name">Zenn</span></div>}
+        </div>
+        <div class="work-card-body">
+          <div class="work-card-type"><span class="ja-only">技術記事</span><span class="en-only">Technical Writing</span></div>
+          <h3>Zenn</h3>
+          <p>
+            <span class="ja-only">エンジニアコミュニティ「Zenn」での技術記事投稿。業務や個人開発で得た知見を発信しています。</span>
+            <span class="en-only">Technical articles on Zenn. Sharing insights from work and personal projects.</span>
+          </p>
+          <div class="work-card-links">
+            <a href="https://zenn.dev/kunihero" class="work-card-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Visit
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-card">
+        <div class="work-card-thumb">
+          {profileImage ? <img src={profileImage} alt="kuni portfolio" loading="lazy" /> : <div class="work-card-thumb-placeholder"><span class="thumb-initial">K</span><span class="thumb-name">kuni.dev</span></div>}
+        </div>
+        <div class="work-card-body">
+          <div class="work-card-type"><span class="ja-only">このサイト</span><span class="en-only">This Site</span></div>
+          <h3><span class="ja-only">ポートフォリオサイト</span><span class="en-only">Portfolio Site</span></h3>
+          <p>
+            <span class="ja-only">今ご覧いただいているこのサイトです。Astro（SSG）で構築し、AWSにホスティング。Claude Codeで一発生成しました。</span>
+            <span class="en-only">The site you're looking at right now. Built with Astro (SSG), hosted on AWS, generated with Claude Code.</span>
+          </p>
+          <div class="work-card-links">
+            <a href="https://github.com/kunihiro38" class="work-card-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg> Code
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- CERTIFICATIONS -->
+<section class="section" id="certs">
+  <div class="section-header fade-in">
+    <div class="section-label">05 — <span class="ja-only">資格</span><span class="en-only">Certifications</span></div>
+    <h2 class="section-title"><span class="ja-only">取得資格</span><span class="en-only">Certifications</span></h2>
+    <div class="section-divider"></div>
+  </div>
+  <div class="certs-grid fade-in">
+    <div class="cert-group">
+      <h3><span>☁️</span> IT</h3>
+      <ul class="cert-list">
+        <li>AWS AI Practitioner <span class="cert-year">2025</span></li>
+        <li>AWS Solutions Architect – Associate <span class="cert-year">2023</span></li>
+        <li>AWS Cloud Practitioner <span class="cert-year">2023</span></li>
+        <li>ORACLE MASTER Bronze <span class="cert-year">2021</span></li>
+        <li>MS Office Expert Excel <span class="cert-year">2013</span></li>
+        <li>MS Office Specialist Word <span class="cert-year">2013</span></li>
+        <li><span class="ja-only">ITパスポート</span><span class="en-only">IT Passport</span> <span class="cert-year">2011</span></li>
+      </ul>
+    </div>
+    <div class="cert-group">
+      <h3><span>🌐</span> <span class="ja-only">語学</span><span class="en-only">Language</span></h3>
+      <ul class="cert-list">
+        <li>TOEIC 725 <span class="cert-year">2013</span></li>
+        <li><span class="ja-only">実用英語技能検定2級</span><span class="en-only">Eiken Grade 2</span> <span class="cert-year">2013</span></li>
+      </ul>
+    </div>
+    <div class="cert-group">
+      <h3><span>🍽️</span> <span class="ja-only">食品・その他</span><span class="en-only">Food & Others</span></h3>
+      <ul class="cert-list">
+        <li><span class="ja-only">わな猟免許</span><span class="en-only">Trap Hunting License</span> <span class="cert-year">2025</span></li>
+        <li><span class="ja-only">だしソムリエ1級</span><span class="en-only">Dashi Sommelier Grade 1</span> <span class="cert-year">2018</span></li>
+        <li><span class="ja-only">野菜ソムリエ</span><span class="en-only">Vegetable Sommelier</span> <span class="cert-year">2018</span></li>
+        <li><span class="ja-only">中級食品表示診断士</span><span class="en-only">Food Labeling Diagnostician</span> <span class="cert-year">2018</span></li>
+        <li><span class="ja-only">食品衛生責任者</span><span class="en-only">Food Hygiene Manager</span> <span class="cert-year">2017</span></li>
+        <li>FP技能士3級 <span class="cert-year">2017</span></li>
+        <li><span class="ja-only">販売士検定3級</span><span class="en-only">Retail Marketing Grade 3</span> <span class="cert-year">2017</span></li>
+        <li><span class="ja-only">普通自動車第一種運転免許</span><span class="en-only">Driver's License</span> <span class="cert-year">2008</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- HOBBIES -->
+<div class="section-full" id="hobbies">
+  <div class="section-full-inner">
+    <div class="section-header fade-in">
+      <div class="section-label">06 — <span class="ja-only">趣味</span><span class="en-only">Hobbies</span></div>
+      <h2 class="section-title"><span class="ja-only">好きなこと</span><span class="en-only">Things I Love</span></h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="hobbies-grid fade-in">
+
+      <div class="hobby-card">
+        <h3>🃏 <span class="ja-only">ポーカー</span><span class="en-only">Poker</span></h3>
+        <p>
+          <span class="ja-only">テキサスホールデムにハマっています。世界各地のカジノで実際にプレイしてきました。戦略と心理戦の融合が最高に楽しい。</span>
+          <span class="en-only">Hooked on Texas Hold'em. I've played at casinos around the world. Love the blend of strategy and psychology.</span>
+        </p>
+        <div class="country-tags" style="margin-top: 0.75rem;">
+          <span class="country-tag">🇺🇸 Las Vegas</span>
+          <span class="country-tag">🇸🇬 Singapore</span>
+          <span class="country-tag">🇵🇭 Angeles</span>
+          <span class="country-tag">🇲🇴 Macau</span>
+          <span class="country-tag">🇪🇸 Barcelona</span>
+          <span class="country-tag">🇩🇪 Berlin</span>
+          <span class="country-tag">🇰🇷 Seoul</span>
+        </div>
+      </div>
+
+      <div class="hobby-card">
+        <h3>🏃 <span class="ja-only">ランニング</span><span class="en-only">Running</span></h3>
+        <p>
+          <span class="ja-only">中学の陸上部から続くランニング好き。フルマラソンの自己ベストは3時間49分。各地の大会に出場しています。</span>
+          <span class="en-only">Running has been part of my life since the junior high track team. Full marathon PB: 3:49. I run in races across Japan.</span>
+        </p>
+        <div class="race-tags">
+          <span class="race-tag"><span class="ja-only">淀川大阪マラソン</span><span class="en-only">Yodogawa Osaka Marathon</span></span>
+          <span class="race-tag"><span class="ja-only">東京マラソン</span><span class="en-only">Tokyo Marathon</span></span>
+          <span class="race-tag"><span class="ja-only">横浜マラソン</span><span class="en-only">Yokohama Marathon</span></span>
+          <span class="race-tag"><span class="ja-only">びわ湖マラソン</span><span class="en-only">Lake Biwa Marathon</span></span>
+          <span class="race-tag"><span class="ja-only">京都マラソン</span><span class="en-only">Kyoto Marathon</span></span>
+        </div>
+      </div>
+
+      <div class="hobby-card">
+        <h3>♨️ <span class="ja-only">サウナ & 温泉</span><span class="en-only">Sauna & Onsen</span></h3>
+        <p>
+          <span class="ja-only">サウナと温泉が大好き。京都に住んでいるので、近場の名湯巡りも楽しんでいます。整うあの感覚がたまらない。</span>
+          <span class="en-only">Love saunas and hot springs. Living in Kyoto makes it easy to visit great onsen nearby. Nothing beats that post-sauna bliss.</span>
+        </p>
+      </div>
+
+      <div class="hobby-card">
+        <h3>✈️ <span class="ja-only">旅行</span><span class="en-only">Travel</span></h3>
+        <p>
+          <span class="ja-only">日本の47都道府県は全て訪問済み。海外も17カ国以上を訪れました。</span>
+          <span class="en-only">I've visited all 47 prefectures in Japan. Also traveled to 17+ countries around the world.</span>
+        </p>
+        <div class="country-tags">
+          <span class="country-tag">🇦🇺 Australia</span>
+          <span class="country-tag">🇻🇳 Vietnam</span>
+          <span class="country-tag">🇰🇷 Korea</span>
+          <span class="country-tag">🇵🇭 Philippines</span>
+          <span class="country-tag">🇹🇼 Taiwan</span>
+          <span class="country-tag">🇮🇳 India</span>
+          <span class="country-tag">🇺🇸 USA</span>
+          <span class="country-tag">🇪🇸 Spain</span>
+          <span class="country-tag">🇫🇷 France</span>
+          <span class="country-tag">🇩🇪 Germany</span>
+          <span class="country-tag">🇨🇭 Switzerland</span>
+          <span class="country-tag">🇹🇭 Thailand</span>
+          <span class="country-tag">🇰🇭 Cambodia</span>
+          <span class="country-tag">🇲🇾 Malaysia</span>
+          <span class="country-tag">🇸🇬 Singapore</span>
+          <span class="country-tag">🇮🇩 Indonesia</span>
+          <span class="country-tag">🇭🇰 Hong Kong</span>
+          <span class="country-tag">🇲🇴 Macau</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- VALUES & QUOTES -->
+<section class="section" id="values">
+  <div class="section-header fade-in">
+    <div class="section-label">07 — <span class="ja-only">大事にしていること & 名言</span><span class="en-only">Values & Quotes</span></div>
+    <h2 class="section-title"><span class="ja-only">心に留めていること</span><span class="en-only">What I Hold Dear</span></h2>
+    <div class="section-divider"></div>
+  </div>
+  <div class="values-list fade-in" style="margin-bottom: var(--space-xl);">
+    <div class="value-card">
+      <h3><span class="ja-only">習慣化すること</span><span class="en-only">Building Habits</span></h3>
+      <p><span class="ja-only">習慣化することで、毎日勉強ができる、毎日読書ができる、毎日○○が…と自然発生的に人生の一部になるように心がけています。</span><span class="en-only">By making things habitual — daily study, daily reading, daily practice — they naturally become a part of life.</span></p>
+    </div>
+    <div class="value-card">
+      <h3><span class="ja-only">徳を積むこと</span><span class="en-only">Building Virtue</span></h3>
+      <p><span class="ja-only">受け手がされて嬉しい事を心がけて行動したり、善行を行うこと。</span><span class="en-only">Always act with the intention of doing what makes others happy. Practice kindness and good deeds.</span></p>
+    </div>
+    <div class="value-card">
+      <h3><span class="ja-only">人事を尽くして天命を待つ</span><span class="en-only">Do Your Best, Leave the Rest to Fate</span></h3>
+      <p><span class="ja-only">やれることを全てやり尽くしたら、あとは結果を天に委ねる。そのままです。</span><span class="en-only">Do everything in your power, then trust the outcome to fate. Simple as that.</span></p>
+    </div>
+  </div>
+  <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: var(--space-md); display: flex; align-items: center; gap: 0.5rem;" class="fade-in">
+    📖 <span class="ja-only">人生を良い方向に導く名言集</span><span class="en-only">Quotes That Guide My Life</span>
+  </h3>
+  <div class="fade-in">
+    <div class="quote-item">
+      <div class="quote-text"><span class="ja-only">「もし今日が自分の人生最後の日だとしたら、今日やろうとしている事を私は本当にやりたいだろうか？」</span><span class="en-only">"If today were the last day of my life, would I want to do what I am about to do today?"</span></div>
+      <div class="quote-source">— Steve Jobs</div>
+      <div class="quote-comment"><span class="ja-only">常に自分自身に自問し続けることが大切。</span><span class="en-only">The importance of constantly questioning yourself.</span></div>
+    </div>
+    <div class="quote-item">
+      <div class="quote-text"><span class="ja-only">「会社を変える事で人生が良くなる訳ではなく、自分で切り開く事で良くなる。」</span><span class="en-only">"Changing companies won't improve your life — carving your own path will."</span></div>
+      <div class="quote-source"><span class="ja-only">— 転職エージェントより</span><span class="en-only">— From a career advisor</span></div>
+      <div class="quote-comment"><span class="ja-only">環境を変えるのを待つのではなく、自分から切り開いていく。</span><span class="en-only">Don't wait for the environment to change — shape it yourself.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact-section" id="contact">
+  <div class="contact-inner">
+    <div class="contact-info fade-in">
+      <div class="section-label">08 — Contact</div>
+      <h2 class="section-title"><span class="ja-only">お問い合わせ</span><span class="en-only">Get in Touch</span></h2>
+      <div class="section-divider"></div>
+      <p class="contact-text"><span class="ja-only">お仕事のご相談やお問い合わせなど、お気軽にご連絡ください。</span><span class="en-only">Feel free to reach out for work inquiries or collaborations.</span></p>
+      <ul class="contact-links-list">
+        <li><a href="https://github.com/kunihiro38" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg> GitHub</a></li>
+        <li><a href="https://freeheroblog.com/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg> Blog</a></li>
+        <li><a href="https://zenn.dev/kunihero" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M.264 23.771h4.984c.264 0 .498-.147.645-.352L19.614.874c.176-.293-.029-.645-.381-.645h-4.72c-.205 0-.381.117-.528.322L.03 23.361c-.088.176.029.41.234.41zM17.445 23.419l6.479-10.408c.176-.293-.029-.645-.381-.645h-4.72c-.176 0-.352.088-.44.234l-6.655 10.408c-.176.293.029.645.381.645h4.896c.176 0 .352-.088.44-.234z"/></svg> Zenn</a></li>
+      </ul>
+    </div>
+    <form class="contact-form fade-in" onsubmit="handleSubmit(event)">
+      <div class="form-group"><label for="name"><span class="ja-only">お名前</span><span class="en-only">Name</span></label><input type="text" id="name" placeholder="Your name" required></div>
+      <div class="form-group"><label for="email"><span class="ja-only">メールアドレス</span><span class="en-only">Email</span></label><input type="email" id="email" placeholder="your@email.com" required></div>
+      <div class="form-group"><label for="message"><span class="ja-only">メッセージ</span><span class="en-only">Message</span></label><textarea id="message" placeholder="Your message..." required></textarea></div>
+      <button type="submit" class="form-submit"><span class="ja-only">送信する</span><span class="en-only">Send Message</span></button>
+    </form>
+  </div>
+</section>
+
+<footer class="footer"><p>&copy; 2026 kuni. All rights reserved.</p></footer>
+
+<script>
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 80); });
+function toggleMenu() { document.getElementById('navLinks').classList.toggle('open'); }
+function toggleLang() { const h = document.documentElement; h.setAttribute('data-lang', h.getAttribute('data-lang') === 'ja' ? 'en' : 'ja'); }
+const observer = new IntersectionObserver((entries) => { entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }); }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+function handleSubmit(e) { e.preventDefault(); alert(document.documentElement.getAttribute('data-lang') === 'ja' ? '送信機能はAPI接続後に有効になります' : 'Contact form will work after API integration'); }
+document.querySelectorAll('a[href^="#"]').forEach(a => { a.addEventListener('click', function(e) { e.preventDefault(); const t = document.querySelector(this.getAttribute('href')); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('navLinks').classList.remove('open'); } }); });
+</script>
+</body>
+</html>
